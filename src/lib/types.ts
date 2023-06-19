@@ -64,6 +64,7 @@ export type verificationCheck = {
     title: "Proof" | "Activation" | "Expired" | "Revocation" | "GS1CredentialValidation";
 }
 
+// Code and Rule Associated with GS1 Validation Rules - See lib/engine/gs1-credential-errors.ts for list of codes
 export type gs1CredentialValidationRule = {
     code: string;
     rule: string;

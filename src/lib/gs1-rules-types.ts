@@ -1,10 +1,6 @@
 import { VerifiableCredential, gs1CredentialValidationRule } from "./types";
 
-export type toddResult = {
-    verified: boolean;
-}
-
-// GS1 Credential rule validation result
+// GS1 Credential rule validation result - Contains meta data about the credential being validated and the result of the GS1 Credential Rules Validation 
 export type gs1RulesResult = {
     credential?: VerifiableCredential;
     credentialId: string;
@@ -13,11 +9,11 @@ export type gs1RulesResult = {
     errors: gs1CredentialValidationRule[];
 }
 
+// Container Object for returning multiple gs1RulesResult 
 export type gs1RulesResultContainer = {
     verified: boolean;
     result: gs1RulesResult[];
 }
-
 
 // GS1 Credential Validation Result
 export type gs1CredentialValidationRuleResult = {
