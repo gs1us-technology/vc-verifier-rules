@@ -1,6 +1,8 @@
 # Overview 
 The GS1 US Decentralized Identifier & Verifiable Credentials solution has been created to provide guidance on how to verify Verifiable Credentials (VC) issued for the GS1 Verifiable Credentials Digital License ecosystem. 
 
+The GS1 License ecosystem ensures globally unique identification of products, asserts, locations, and entities for global trade.  The GS1 Digital license ecosystem expresses existing licenses as W3C verifiable credentials.   By assembling a chain of these credentials, product, location, and asset assertions can be digitally verified as authentic.  This library supports the validation of these credentials chains.
+
 Currently this solution is built for the [WC3 Verifiable Credentials Data Model 1.1](https://www.w3.org/TR/vc-data-model) and the GS1 level four validation rules defined in the [GS1 Data Model](https://ref.gs1.org/gs1/vc/data-model) to validate the root of trust with GS1 issued credentials.
 
 The GS1 US Verifiable Credentials Verification solution is divided into two libraries. 
@@ -14,7 +16,6 @@ See the using the library section for more details.
 
 # GS1 Credential Data Model
 ## Overview 
-
 When validating GS1 Credentials the verification process will need to resolve each level of the verifiable credential chain. This will be done by checking for the next verifiable credential (VC) in the hierarchy chain is included in the verifiable presentation. 
 If the required verifiable credential is not in the presentation, the verification process must resolve the verifiable credential via the document loader. Any resolved verifiable credential should pass proof and revocation checks prior to completing the GS1 Credential validation rules check.  
 
