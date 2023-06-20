@@ -7,6 +7,7 @@ export type gs1RulesResult = {
     credentialName: string;
     verified: boolean;
     errors: gs1CredentialValidationRule[];
+    resolvedCredential?: gs1RulesResult;
 }
 
 // Container Object for returning multiple gs1RulesResult 
