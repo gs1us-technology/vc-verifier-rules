@@ -51,7 +51,6 @@ export async function checkGS1Credentials(externalCredentialLoader: externalCred
                 gs1CredentialCheck.errors.push(fieldValidationResult.rule)
             }
         }
-
       
         const credentialChainNew = await buildCredentialChain(externalCredentialLoader, verifiablePresentation, credential);
 

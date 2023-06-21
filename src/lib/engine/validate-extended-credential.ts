@@ -141,7 +141,6 @@ export async function validateCredentialChain(externalCredentialVerification: ve
         if (!credentialChain.extendedCredentialChain?.extendedCredentialChain.inPresentation) {
             const resolvedCredentialMetaData = credentialChain.extendedCredentialChain?.extendedCredentialChain;
             gs1CredentialCheck.resolvedCredential =  { 
-                credential: resolvedCredentialMetaData?.credential,
                 credentialId: resolvedCredentialMetaData?.credential?.id, 
                 credentialName: resolvedCredentialMetaData?.schema?.credentialType, 
                 verified: validateExtendedCredentialResult.verified, 
@@ -171,12 +170,11 @@ export async function validateCredentialChain(externalCredentialVerification: ve
             if (!credentialChain.extendedCredentialChain.inPresentation) {
                 const resolvedCredentialMetaData = credentialChain.extendedCredentialChain;
                 gs1CredentialCheck.resolvedCredential =  { 
-                    credential: resolvedCredentialMetaData?.credential,
                     credentialId: resolvedCredentialMetaData?.credential?.id, 
                     credentialName: resolvedCredentialMetaData?.schema?.credentialType, 
                     verified: validateExtendedCredentialResult.verified, 
                     errors: validateExtendedCredentialResult.errors
-                };
+                };;
             }
 
             // Add Errors to Result - will be bubbled up the chain to the child credential result
