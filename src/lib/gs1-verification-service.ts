@@ -51,12 +51,13 @@ export async function checkGS1Credentials(externalCredentialLoader: externalCred
                 gs1CredentialCheck.errors.push(fieldValidationResult.rule)
             }
         }
-
+      
         const credentialChainNew = await buildCredentialChain(externalCredentialLoader, verifiablePresentation, credential);
 
         if (!!!credentialChainNew.error) {
             const extendedCredentialResult = await validateCredentialChain(externalCredentialVerification, credentialChainNew, true);
-                    
+
+            gs1CredentialCheck.resolvedCredential = extendedCredentialResult.resolvedCredential;
             if (!extendedCredentialResult.verified) {
                 gs1CredentialCheck.errors = gs1CredentialCheck.errors.concat(extendedCredentialResult.errors);
             }
@@ -79,7 +80,6 @@ export async function checkGS1CredentialWithoutPresentation(externalCredentialLo
 
 export async function checkGS1CredentialPresentation(externalCredentialLoader: externalCredential, externalCredentialVerification: verifyExternalCredential, verifiablePresentation: VerifiablePresentation) : Promise<gs1RulesResultContainer> {
     const gs1CredentialCheck: gs1RulesResultContainer = { verified: true, result: []};
-
     const presentationCredentials = verifiablePresentation.verifiableCredential;
 
     if (Array.isArray(presentationCredentials)) { 
@@ -90,6 +90,15 @@ export async function checkGS1CredentialPresentation(externalCredentialLoader: e
             if (!credentialResult.verified) {
                 gs1CredentialCheck.verified = false;
             }
+
+            const resolvedCredential = credentialResult.resolvedCredential;
+            if (resolvedCredential) {
+                gs1CredentialCheck.result.push(resolvedCredential);
+                if (!resolvedCredential.verified) {
+                    gs1CredentialCheck.verified = false;
+                }
+            }
+
           }
     } else {
         const credentialResult = await checkGS1Credentials(externalCredentialLoader, externalCredentialVerification, verifiablePresentation, presentationCredentials);
@@ -97,6 +106,10 @@ export async function checkGS1CredentialPresentation(externalCredentialLoader: e
         gs1CredentialCheck.result.push(credentialResult);
         if (!credentialResult.verified) {
             gs1CredentialCheck.verified = false;
+        }
+
+        if (credentialResult.resolvedCredential) {
+            gs1CredentialCheck.result.push(credentialResult.resolvedCredential);
         }
     }
 

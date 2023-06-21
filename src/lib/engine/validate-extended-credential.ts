@@ -41,7 +41,7 @@ export async function buildCredentialChain(externalCredentialLoader: externalCre
         if (extendsCredentialMetaData) {
             const extendedCredentialValue = credentialSubject.extendsCredential || credentialSubject.keyAuthorization;
             const extendedCredentialResult = await resolveExternalCredential(externalCredentialLoader, verifiablePresentation, extendedCredentialValue);
-    
+            
             if (extendedCredentialResult.credential) {
                 // Walk the credential chain
                 const extendedCredentialChain = await buildCredentialChain(externalCredentialLoader, verifiablePresentation, extendedCredentialResult.credential);
@@ -112,9 +112,7 @@ export async function validateCredentialChain(externalCredentialVerification: ve
     // Library currently only supports one extended credential type rule check
     const extendedCredentialType_rule =  credentialSchemaSubject?.extendsCredentialType?.rule;
 
-    // Used for Debugging. Will Be Removed Once Library is ready for publishing 
     if (!!!extendedCredentialType_rule || typeof rulesEngineManager[extendedCredentialType_rule] === "undefined") {
-        debugger;
         gs1CredentialCheck.verified = false;
         gs1CredentialCheck.errors.push(unsupportedCredentialChain);
         return gs1CredentialCheck;
@@ -139,6 +137,17 @@ export async function validateCredentialChain(externalCredentialVerification: ve
     if (credentialChain.extendedCredentialChain?.extendedCredentialChain) {
         const validateExtendedCredentialResult = await validateCredentialChain(externalCredentialVerification, credentialChain.extendedCredentialChain, false);
 
+        // When Resolve VC is not in the presentation add to the output
+        if (!credentialChain.extendedCredentialChain?.extendedCredentialChain.inPresentation) {
+            const resolvedCredentialMetaData = credentialChain.extendedCredentialChain?.extendedCredentialChain;
+            gs1CredentialCheck.resolvedCredential =  { 
+                credentialId: resolvedCredentialMetaData?.credential?.id, 
+                credentialName: resolvedCredentialMetaData?.schema?.credentialType, 
+                verified: validateExtendedCredentialResult.verified, 
+                errors: validateExtendedCredentialResult.errors
+            };
+        }
+
         // Add Errors to Result - will be bubbled up the chain to the child credential result
         if (!validateExtendedCredentialResult.verified) {
             gs1CredentialCheck.errors = gs1CredentialCheck.errors.concat(validateExtendedCredentialResult.errors);
@@ -157,6 +166,17 @@ export async function validateCredentialChain(externalCredentialVerification: ve
         if (credentialChain.extendedCredentialChain && credentialChain.extendedCredentialChain.credentialSubjectSchema) {
             const validateExtendedCredentialResult = await validateCredentialChain(externalCredentialVerification, credentialChain.extendedCredentialChain, false);
 
+            // When Resolve VC is not in the presentation add to the output
+            if (!credentialChain.extendedCredentialChain.inPresentation) {
+                const resolvedCredentialMetaData = credentialChain.extendedCredentialChain;
+                gs1CredentialCheck.resolvedCredential =  { 
+                    credentialId: resolvedCredentialMetaData?.credential?.id, 
+                    credentialName: resolvedCredentialMetaData?.schema?.credentialType, 
+                    verified: validateExtendedCredentialResult.verified, 
+                    errors: validateExtendedCredentialResult.errors
+                };;
+            }
+
             // Add Errors to Result - will be bubbled up the chain to the child credential result
             if (!validateExtendedCredentialResult.verified) {
                 gs1CredentialCheck.verified = false;
@@ -164,8 +184,6 @@ export async function validateCredentialChain(externalCredentialVerification: ve
             }
 
         }
-
-
     }
    
     return gs1CredentialCheck;
