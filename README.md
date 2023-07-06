@@ -27,9 +27,7 @@ To validate a ProductDataCredential in addition to checking its related key cred
 A Company Prefix credential must be issued by a GS1 Member Organization (e.g. GS1 US) or GS1 Global. Part of the validation process for a GS1 Company Prefix credential includes resolving the associated GS1 Prefix License Credential issued by GS1 Global DID **did:web:id.gs1.org**. 
 
 If any of the credentials in the chain, can not be resolved, verified or pass the GS1 credential Rules the whole chain will not be verified. 
-
-![Screenshot](./content/gs1_credential_chain.png)
-   
+  
 ## List of GS1 credentials Supported By the Rules Library
 - GS1PrefixLicenseCredential
 - GS1CompanyPrefixLicenseCredential 
