@@ -1,6 +1,6 @@
 {
   "name": "@gs1us/vc-verifier-rules",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "GS1 US Rules Verification Library for validating GS1 based verifiable credentials.",
   "main": "./dist/index.js",
   "types": ".dist/index.d.js",
