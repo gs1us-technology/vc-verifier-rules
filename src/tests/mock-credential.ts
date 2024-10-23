@@ -104,7 +104,9 @@ export const mockCompanyPrefixCredential = {
                 },
                 "https://w3id.org/vc-revocation-list-2020/v1"
             ],
-            "issuer": "did:web:cbpvsvip-vc.gs1us.org",
+            "issuer":  { 
+                id: "did:web:cbpvsvip-vc.gs1us.org"
+            },
             "name": "GS1 Company Prefix License",
             "description": "THIS GS1 DIGITAL LICENSE CREDENTIAL IS FOR TESTING PURPOSES ONLY. A GS1 Company Prefix License is issued by a GS1 Member Organization or GS1 Global Office and allocated to a user company or to itself for the purpose of generating tier 1 GS1 identification keys.",
             "issuanceDate": "2021-05-11T10:50:36.701Z",
@@ -150,7 +152,9 @@ export const mockCompanyPrefixCredential = {
                 },
                 "https://w3id.org/vc-revocation-list-2020/v1"
             ],
-            "issuer": "did:web:cbpvsvip-vc.gs1us.org",
+            "issuer":  { 
+                id: "did:web:cbpvsvip-vc.gs1us.org"
+            },
             "name": "GS1 Key Credential",
             "description": "THIS GS1 DIGITAL LICENSE CREDENTIAL IS FOR TESTING PURPOSES ONLY. This is the Verifiable Credential that indicates that something has been identified. It contains no data about what has been identified as that is done via the association process. This credential is used only to indicate that the key that it contains exists and is valid.",
             "id": "did:key:z6MkkzTNsyFfx4VQFkSs3R7q8nKN5twGrM8538Xu7YXym6mW",
@@ -191,7 +195,9 @@ export const mockCompanyPrefixCredential = {
                 },
                 "https://w3id.org/vc-revocation-list-2020/v1"
             ],
-            "issuer": "did:web:cbpvsvip-vc.gs1us.org",
+            "issuer":  { 
+                id: "did:web:cbpvsvip-vc.gs1us.org"
+            },
             "name": "GS1 Party Identification Credential",
             "description": "THIS GS1 DIGITAL LICENSE CREDENTIAL IS FOR TESTING PURPOSES ONLY. The party data credential is the Verifiable Credential that is shared with parties interested in the basic information associated with a party identified by a GLN.",
             "issuanceDate": "2021-05-11T10:50:36.701Z",

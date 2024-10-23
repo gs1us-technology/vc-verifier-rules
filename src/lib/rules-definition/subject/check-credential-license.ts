@@ -8,11 +8,11 @@ import { LicenseValueMinMax, gs1CredentialValidationRuleResult, subjectLicenseVa
 // Developer Notes: credentialSubject is defined as any because the credential subject is dynamic based on JSON-LD for a credential
 export async function checkCredentialLicenseValue(credentialSubject: subjectLicenseValue, licenseLength: LicenseValueMinMax = { miniumLength: 3, maximumLength: 14 }): Promise<gs1CredentialValidationRuleResult> {
 
-    if (!!!credentialSubject?.licenseValue) {
+    if (!credentialSubject?.licenseValue) {
         return {verified: false, rule: invalidLicenseValueFormat};
     }
 
-    var value = credentialSubject.licenseValue;
+    const value = credentialSubject.licenseValue;
 
     if (isNaN(+value)) {
         return {verified: false, rule: invalidLicenseValueFormat};

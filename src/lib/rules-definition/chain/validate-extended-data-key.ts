@@ -1,8 +1,8 @@
-import { dataMismatchBetweenDataKeyCredential, dataMismatchBetweenPartyDataKeyCredential, dataMissingToValidateCredentialChain, invalidIssuer } from "../../engine/gs1-credential-errors.js";
+import { dataMismatchBetweenDataKeyCredential, dataMissingToValidateCredentialChain, invalidIssuer } from "../../engine/gs1-credential-errors.js";
 import { credentialChainMetaData } from "../../engine/validate-extended-credential";
-import { gs1RulesResult } from "../../gs1-rules-types";
-import { VerifiableCredential } from "../../types.js";
+import { CredentialSubject, gs1RulesResult, VerifiableCredential } from "../../types.js";
 import { parseGS1DigitalLink } from "../subject/check-credential-subject-Id-digital-link.js";
+import { gs1Organization } from "../types/gs1-shared-types.js";
 import  { checkCredentialChainIssuers } from "./shared-extended.js";
 
 // Types for Data Credential Chain Validation
@@ -12,36 +12,66 @@ export type credentialChainIssuers = {
     companyPrefix: VerifiableCredential;
 }
 
+export type credentialChainContext = {
+    credential: VerifiableCredential;
+    extendedCredentialChain?: credentialChainMetaData;
+}
+
+export type credentialSubjectKey = {
+    id: string;
+}
+
+export type credentialSubjectData = {
+    id: string;
+    sameAs?: string
+    organization?: gs1Organization;
+}
+
+
+
+export type credentialSubjectOrganization = {
+    id: string;
+    organization: gs1Organization;
+    sameAs: string
+}
+
+
+export type credentialSubjectBasic = {
+    id: string;
+}
+
+//     dataCredentialSubject?: credentialSubjectData | credentialSubjectOrganization;
 export type credentialChainDataKey = {
     isValid: boolean;
-    dataCredential?: any;
-    dataCredentialSubject?: any;
-    KeyCredential?: any;
-    keyCredentialSubject?: any;
-    companyPrefixCredential?: any;
-    companyPrefixCredentialSubject?: any;
+    dataCredential?: VerifiableCredential;
+    dataCredentialSubject?: CredentialSubject;
+    KeyCredential?: credentialChainContext;
+    keyCredentialSubject?: CredentialSubject;
+    companyPrefixCredential?: credentialChainContext;
+    companyPrefixCredentialSubject?: CredentialSubject;
 }
 
 // Common Helper Methods for Data Credential Chain Validation
 
 // Setup Data Credential Chain for validation
 // Developer Note: Future handle different parent types for key credential
-function setupDataCredentialChain(credentialChain: any) : credentialChainDataKey {
+function setupDataCredentialChain(credentialChain: credentialChainMetaData) : credentialChainDataKey {
+
+   // debugger;
 
     const dataCredentialChain : credentialChainDataKey = { 
         isValid: true,
         dataCredential: credentialChain.credential,
         dataCredentialSubject: credentialChain.credential.credentialSubject,
         KeyCredential: credentialChain.extendedCredentialChain,
-        keyCredentialSubject: credentialChain.extendedCredentialChain.credential?.credentialSubject,
+        keyCredentialSubject: credentialChain.extendedCredentialChain ? credentialChain.extendedCredentialChain?.credential?.credentialSubject : undefined
     }
 
-    // TODO: Future handle different parent types for key credential
-    dataCredentialChain.companyPrefixCredential = dataCredentialChain.KeyCredential.extendedCredentialChain;
+    dataCredentialChain.companyPrefixCredential = dataCredentialChain.KeyCredential?.extendedCredentialChain;
     dataCredentialChain.companyPrefixCredentialSubject = dataCredentialChain.companyPrefixCredential?.credential?.credentialSubject;
 
     // Return Missing Data Error if any of the expected credential subjects are missing from the chain
-    if (!!!dataCredentialChain.dataCredentialSubject || !!!dataCredentialChain.keyCredentialSubject || !!!dataCredentialChain.companyPrefixCredentialSubject) {
+    if (!dataCredentialChain.dataCredentialSubject || !dataCredentialChain.keyCredentialSubject || !dataCredentialChain.companyPrefixCredentialSubject) {
         dataCredentialChain.isValid = false;
     }
 
@@ -50,7 +80,15 @@ function setupDataCredentialChain(credentialChain: any) : credentialChainDataKey
 
 // Validate Data Credential against Key Credential Digital Link subject fields
 // When valueToCheck is not empty do an additional check against the parsed value of the GS1 Digital Link
-function validateDataToKeyCredential(keyCredentialSubject: any, dataCredentialSubject: any, valueToCheck: string = "") : boolean {
+function validateDataToKeyCredential(keyCredentialSubject: CredentialSubject | undefined, dataCredentialSubject: any | undefined, valueToCheck: string = "") : boolean {
+
+    if (keyCredentialSubject === undefined) {
+        throw new Error("Key Credential Subject is not defined.");
+    }
+
+    if (dataCredentialSubject === undefined) {
+        throw new Error("Data Credential Subject is not defined.");
+    }
 
     // Check Data Credential Against Key
     const keyDigitalLink = parseGS1DigitalLink(keyCredentialSubject.id);
@@ -76,6 +114,19 @@ function validateDataToKeyCredential(keyCredentialSubject: any, dataCredentialSu
 // Compare Issuers of Organization Data Credential and it's chain.
 function checkDataCredentialIssuerChain(dataCredentialChain: credentialChainDataKey) : boolean {
    
+
+    if (dataCredentialChain === undefined) 
+        throw new Error("Data Credential Chain is not defined.");
+
+    if (dataCredentialChain.dataCredential === undefined) 
+        throw new Error("dataCredential is required to validate GS1 Credential Chain.");
+
+    if (dataCredentialChain.KeyCredential === undefined) 
+        throw new Error("KeyCredential is required to validate GS1 Credential Chain.");
+
+    if (dataCredentialChain.companyPrefixCredential === undefined) 
+        throw new Error("companyPrefixCredential is required to validate GS1 Credential Chain.");
+
     return checkCredentialChainIssuers({ dataCredential: dataCredentialChain.dataCredential, 
         keyCredential: dataCredentialChain.KeyCredential.credential, 
         companyPrefix: dataCredentialChain.companyPrefixCredential.credential });
@@ -86,6 +137,8 @@ function checkDataCredentialIssuerChain(dataCredentialChain: credentialChainData
 // Validate Product Data Credential Chain 
 export async function validateExtendedKeyDataCredential(credentialType: string,
     credentialChain:  credentialChainMetaData): Promise<gs1RulesResult> {
+
+       // debugger;
     
     const gs1CredentialCheck: gs1RulesResult = { credentialId: credentialChain.credential.id, credentialName: credentialType, verified: false, errors: []};
 
@@ -114,6 +167,8 @@ export async function validateExtendedKeyDataCredential(credentialType: string,
 export async function validateExtendedKeyCredential(credentialType: string,
     credentialChain:  credentialChainMetaData): Promise<gs1RulesResult> {
 
+       // debugger;
+
     const gs1CredentialCheck: gs1RulesResult = { credentialId: credentialChain.credential.id, credentialName: credentialType, verified: false, errors: []};
  
     const dataCredentialChain = setupDataCredentialChain(credentialChain);
@@ -124,8 +179,7 @@ export async function validateExtendedKeyCredential(credentialType: string,
 
     // Check Data Credential Against Key
     const checkDataToKey = validateDataToKeyCredential(dataCredentialChain.keyCredentialSubject, 
-        dataCredentialChain.dataCredentialSubject, 
-        dataCredentialChain.dataCredentialSubject.organization["gs1:partyGLN"]);
+        dataCredentialChain.dataCredentialSubject);
         
     if (!checkDataToKey) {
         gs1CredentialCheck.errors.push(dataMismatchBetweenDataKeyCredential);
