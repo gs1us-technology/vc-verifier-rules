@@ -57,8 +57,6 @@ export type credentialChainDataKey = {
 // Developer Note: Future handle different parent types for key credential
 function setupDataCredentialChain(credentialChain: credentialChainMetaData) : credentialChainDataKey {
 
-   // debugger;
-
     const dataCredentialChain : credentialChainDataKey = { 
         isValid: true,
         dataCredential: credentialChain.credential,
@@ -137,8 +135,6 @@ function checkDataCredentialIssuerChain(dataCredentialChain: credentialChainData
 // Validate Product Data Credential Chain 
 export async function validateExtendedKeyDataCredential(credentialType: string,
     credentialChain:  credentialChainMetaData): Promise<gs1RulesResult> {
-
-       // debugger;
     
     const gs1CredentialCheck: gs1RulesResult = { credentialId: credentialChain.credential.id, credentialName: credentialType, verified: false, errors: []};
 
@@ -166,8 +162,6 @@ export async function validateExtendedKeyDataCredential(credentialType: string,
 // Validate Organization Data Credential Chain 
 export async function validateExtendedKeyCredential(credentialType: string,
     credentialChain:  credentialChainMetaData): Promise<gs1RulesResult> {
-
-       // debugger;
 
     const gs1CredentialCheck: gs1RulesResult = { credentialId: credentialChain.credential.id, credentialName: credentialType, verified: false, errors: []};
  
