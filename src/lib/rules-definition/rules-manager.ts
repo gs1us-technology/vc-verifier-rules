@@ -15,6 +15,7 @@ export type rulesEngineManagerConfig = {
 
 // Rules Engine Manager that handles GS1 Credential Rules validation
 // Developer Notes: this is defined as dynamic object (any) for flexibility in calling the rules engine 
+// eslint-disable-next-line
 export const rulesEngineManager: any = {};
 
 rulesEngineManager.prefixLicense = checkPrefixCredentialLicenseValue;

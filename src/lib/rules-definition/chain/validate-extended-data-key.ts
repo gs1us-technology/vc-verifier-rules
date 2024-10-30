@@ -78,6 +78,7 @@ function setupDataCredentialChain(credentialChain: credentialChainMetaData) : cr
 
 // Validate Data Credential against Key Credential Digital Link subject fields
 // When valueToCheck is not empty do an additional check against the parsed value of the GS1 Digital Link
+// eslint-disable-next-line
 function validateDataToKeyCredential(keyCredentialSubject: CredentialSubject | undefined, dataCredentialSubject: any | undefined, valueToCheck: string = "") : boolean {
 
     if (keyCredentialSubject === undefined) {
@@ -135,8 +136,8 @@ function checkDataCredentialIssuerChain(dataCredentialChain: credentialChainData
 // Validate Product Data Credential Chain 
 export async function validateExtendedKeyDataCredential(credentialType: string,
     credentialChain:  credentialChainMetaData): Promise<gs1RulesResult> {
-    
-    const gs1CredentialCheck: gs1RulesResult = { credentialId: credentialChain.credential.id, credentialName: credentialType, verified: false, errors: []};
+
+        const gs1CredentialCheck: gs1RulesResult = { credentialId: credentialChain.credential.id, credentialName: credentialType, verified: false, errors: []};
 
     const dataCredentialChain = setupDataCredentialChain(credentialChain);
     if (!dataCredentialChain.isValid) {

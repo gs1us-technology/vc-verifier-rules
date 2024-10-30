@@ -37,6 +37,7 @@ export const compileSchema = function (schemaToValidate: JsonSchemaMetaModel) : 
       
       const gs1RuleCheckResult = checkCredentialAlternativeLicenseValue(data);
       if (!gs1RuleCheckResult.verified) { 
+        // eslint-disable-next-line
         // @ts-ignore -- Type Script Overrirde required to attach error to Ajv validate function
         customRuleValidation.errors = createJsonSchemaError("altLicenseValidation", gs1RuleCheckResult, dataCxt);
      }
@@ -55,6 +56,7 @@ export const compileSchema = function (schemaToValidate: JsonSchemaMetaModel) : 
   
       const gs1RuleCheckResult = checkCredentialSubjectIdDigitalLink(data);
       if (!gs1RuleCheckResult.verified) { 
+          // eslint-disable-next-line  
           // @ts-ignore -- Type Script Overrirde required to attach error to Ajv validate function
           customRuleValidation.errors = createJsonSchemaError("digitalLink", gs1RuleCheckResult, dataCxt);
       }
@@ -73,6 +75,7 @@ export const compileSchema = function (schemaToValidate: JsonSchemaMetaModel) : 
   
       const gs1RuleCheckResult = checkCredentialSameAsDigitalLink(data);
       if (!gs1RuleCheckResult.verified) { 
+          // eslint-disable-next-line
           // @ts-ignore -- Type Script Overrirde required to attach error to Ajv validate function
           customRuleValidation.errors = createJsonSchemaError("digitalLink", gs1RuleCheckResult, dataCxt);
       }

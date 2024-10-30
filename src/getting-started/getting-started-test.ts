@@ -1,7 +1,7 @@
 import { checkGS1CredentialPresentationValidation, checkGS1CredentialWithoutPresentation } from "../lib/gs1-verification-service.js";
 import { externalCredential, gs1CredentialValidationRule, gs1RulesResult, gs1ValidatorRequest, jsonSchemaLoader, VerifiableCredential, verifyExternalCredential } from "../lib/types.js";
 import { getDecodedPresentation } from "../lib/utility/jwt-utils.js";
-import { mockCompanyPrefixCredential, mockPrefixLicenseCredential } from "../tests/mock-credential.js";
+import { mockPrefixLicenseCredential } from "../tests/mock-credential.js";
 import { mockJoseCredentialPresentationProductJwt } from "../tests/mock-jose-credential.js";
 import { mock_gs1CompanyPrefixSchema, mock_gs1ProductDataSchema } from "../tests/mock-schema.js";
 
