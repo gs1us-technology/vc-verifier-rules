@@ -1,8 +1,7 @@
 import { resolveExternalCredential } from '../lib/engine/resolve-external-credential';
 import { buildCredentialChain, credentialChainMetaData, validateCredentialChain } from '../lib/engine/validate-extended-credential';
-import { externalCredential, gs1RulesResult, verifyExternalCredential } from '../lib/gs1-rules-types';
 import { CredentialSubjectSchema } from '../lib/rules-schema/rules-schema-types';
-import { VerifiableCredential } from '../lib/types';
+import { externalCredential, gs1CredentialValidationRule, gs1RulesResult, VerifiableCredential, verifyExternalCredential } from '../lib/types';
 import { mockCompanyPrefixCredential, mockGenericCredential, mockPrefixLicenseCredential, mockPresentationParty } from './mock-credential';
 import { validateExtendedCompanyPrefixCredential } from '../lib/rules-definition/chain/validate-extended-company-prefix';
 import { validateExtendedKeyDataCredential } from '../lib/rules-definition/chain/validate-extended-data-key';
@@ -22,9 +21,9 @@ const mock_getExternalCredential: externalCredential = async (url: string) : Pro
 const mock_checkExternalCredential: verifyExternalCredential = async (credential: VerifiableCredential) : Promise<gs1RulesResult> => {
 
     const verifyStatus = credential.id === "mockCredentialId_Fail" ? false : true;
-    const errors: any[] = [];
+    const errors: gs1CredentialValidationRule[] = [];
     if (!verifyStatus) {
-        errors.push({message: "Mock Error"})
+        errors.push({code: "MOCK173", rule: "Mock Rule"})
     }
 
     const gs1RulesResultMock = { credentialId: "MockCredentialId", credentialName: "MockCredentialName", verified: verifyStatus, errors: errors};
@@ -59,7 +58,7 @@ describe('Tests for Rules Engine Subject Field Validation', () => {
           const result = await resolveExternalCredential(mock_getExternalCredential, mockPresentationParty, urlToResolve);
           expect(result.credential).toBeUndefined();
           expect(result.error?.length).toBeGreaterThan(0);
-
+          expect(result.error).toBe(expectedError);
     })
   
     it('should throw error for externally credential (undefined) that can not be resolved', async () => {
@@ -69,6 +68,7 @@ describe('Tests for Rules Engine Subject Field Validation', () => {
         const result = await resolveExternalCredential(mock_getExternalCredential, mockPresentationParty, urlToResolve);
         expect(result.credential).toBeUndefined();
         expect(result.error?.length).toBeGreaterThan(0);
+        expect(result.error).toBe(expectedError);
     })
 
     it('should build credential chain for Company Prefix', async () => {
@@ -101,7 +101,7 @@ describe('Tests for Rules Engine Subject Field Validation', () => {
         const resultSchema = result.schema;
 
         expect(resultSchema).toBeDefined();
-        expect(resultSchema.properties).toBeUndefined();
+        expect(resultSchema.title).toBe("genericCredentialSchema");
     })
 
     it('should validate credential chain for Company Prefix and extended License Prefix Credential', async () => {
@@ -144,14 +144,11 @@ describe('Tests for Rules Engine Subject Field Validation', () => {
     it('should not validate credential chain for Company Prefix because child type is invalid', async () => {
         // In line update presentation to only include the company prefix credential
         const mockPresentation  = {...mockPresentationParty, verifiableCredential: [mockCompanyPrefixCredential]};
-        const resultBuildChain = await buildCredentialChain(mock_getExternalCredential, mockPresentation, mockCompanyPrefixCredential);
 
         // Mock Overrides for Testing Different Scenarios
-        const schemaSubject = resultBuildChain.credentialSubjectSchema as CredentialSubjectSchema;
-        if (schemaSubject && schemaSubject.childCredential) {
-            schemaSubject.childCredential.type = ["mock"];
-        }
+        mockPresentation.verifiableCredential[0].type = ["mock"];
 
+        const resultBuildChain = await buildCredentialChain(mock_getExternalCredential, mockPresentation, mockCompanyPrefixCredential);
         const result = await validateCredentialChain(mock_checkExternalCredential, resultBuildChain, true);
         expect(result.verified).toBe(false);
     })

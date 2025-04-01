@@ -1,69 +1,59 @@
-import { externalCredential, gs1RulesResult, gs1RulesResultContainer, verifyExternalCredential } from "./gs1-rules-types.js";
 import { genericCredentialSchema } from "./rules-schema/genericCredentialSchema.js";
-import { rulesEngineManager } from "./rules-definition/rules-manager.js";
 import { getCredentialRuleSchema } from "./get-credential-type.js";
 import { buildCredentialChain,  validateCredentialChain } from "./engine/validate-extended-credential.js";
-import { CredentialPresentation, VerifiableCredential, VerifiablePresentation } from "./types.js";
-import { errorResolveCredentialCode, requiredFieldMissing } from "./engine/gs1-credential-errors.js";
+import { CredentialPresentation, gs1RulesResult, gs1RulesResultContainer, gs1ValidatorRequest, VerifiableCredential, VerifiablePresentation } from "./types.js";
+import { errorResolveCredentialCode } from "./engine/gs1-credential-errors.js";
+import { checkSchema } from "./schema/validate-schema.js";
+import { resolveExternalCredential } from "./engine/resolve-external-credential.js";
 
 // Verify the credential and ensure it follows the GS1 level four rules.
-// - externalCredentialLoader: External Callback to get credentials from external source
+// - validatorRequest: Request Objetct with callback fuctions for resolving and verifying credentials
 // - verifiablePresentation: Verifiable Presentation containing the credential to be verified
-export async function checkGS1Credentials(externalCredentialLoader: externalCredential, externalCredentialVerification: verifyExternalCredential, verifiablePresentation: CredentialPresentation, credential: VerifiableCredential) : Promise<gs1RulesResult> {
+// - credential : Verifiable Credential to be verified
+// - When fullJsonSchemaValidationOn is true will Validate full GS1 JSON Schema
+// - When fullJsonSchemaValidationOn is false will Validate only validate GS1 Custom Rules and Root of Trust credential chain
+async function checkGS1Credentials(validatorRequest: gs1ValidatorRequest, verifiablePresentation: CredentialPresentation, credential: VerifiableCredential) : Promise<gs1RulesResult> {
 
     const credentialSubject = credential?.credentialSubject;
 
-    if (!!!credential || !!!credentialSubject) { 
+    if (!credential || !credentialSubject) { 
         throw new Error("No Credential in Presentation");
     }
 
-    const credentialSchema = getCredentialRuleSchema(credential);
+    if (!validatorRequest || !validatorRequest.gs1DocumentResolver) { 
+        throw new Error("Document Resolver Callback must be provided to validate GS1 Credentials");
+    }
+    
+    const externalCredentialLoader = validatorRequest.gs1DocumentResolver.externalCredentialLoader;
+    const externalCredentialVerification = validatorRequest.gs1DocumentResolver.externalCredentialVerification;
+    const jsonSchemaLoader = validatorRequest.gs1DocumentResolver.externalJsonSchemaLoader;
+
+    const credentialSchema = getCredentialRuleSchema(jsonSchemaLoader, credential, validatorRequest.fullJsonSchemaValidationOn);
 
     // Return verified when non GS1 Credential
     if (credentialSchema.$id === genericCredentialSchema.$id) { 
         return { credentialId : credential.id, credentialName: "unknown", verified: true, errors: []};
     }
 
-    const gs1CredentialCheck: gs1RulesResult = { credentialId : credential.id, credentialName: credentialSchema.credentialType, verified: true, errors: []};
-    const credentialSubjectSchemaRule = credentialSchema.properties?.credentialSubject;
+    const gs1CredentialCheck: gs1RulesResult = { credentialId : credential.id, credentialName: credentialSchema.title ? credentialSchema.title : "unknown", verified: true, errors: []};
 
-    if (credentialSubjectSchemaRule) {
+    // Enforce GS1 Credential JSON Schema Rules
+    const schemaCheckResult = await checkSchema(credentialSchema, credential);
 
-        // Check required fields are present
-        credentialSubjectSchemaRule.required.forEach( (requiredField: string) => {
-            const fieldExistInwSubject = Object.keys(credentialSubject).includes(requiredField);
-            if (!fieldExistInwSubject) {
-                const requiredFieldMissingError = { 
-                    code: requiredFieldMissing.code,
-                    rule: `Required field ${requiredField} is missing.`
-                };
+    if (!schemaCheckResult.verified) { 
+       gs1CredentialCheck.errors = schemaCheckResult.errors;
+   }
 
-                gs1CredentialCheck.errors.push(requiredFieldMissingError)
-            }
-        });
+    const credentialChain = await buildCredentialChain(externalCredentialLoader, verifiablePresentation, credential);
+    if (!credentialChain.error) {
+        const extendedCredentialResult = await validateCredentialChain(externalCredentialVerification, credentialChain, true);
 
-        // Check Credential Subject Fields
-        for (const field in credentialSubjectSchemaRule.properties) {
-            const checkField = credentialSubjectSchemaRule.properties[field];
-
-            const fieldValidationResult = await rulesEngineManager[checkField.type](credentialSubject);
-            if (!fieldValidationResult.verified) {
-                gs1CredentialCheck.errors.push(fieldValidationResult.rule)
-            }
+        gs1CredentialCheck.resolvedCredential = extendedCredentialResult.resolvedCredential;
+        if (!extendedCredentialResult.verified) {
+            gs1CredentialCheck.errors = gs1CredentialCheck.errors.concat(extendedCredentialResult.errors);
         }
-      
-        const credentialChainNew = await buildCredentialChain(externalCredentialLoader, verifiablePresentation, credential);
-
-        if (!!!credentialChainNew.error) {
-            const extendedCredentialResult = await validateCredentialChain(externalCredentialVerification, credentialChainNew, true);
-
-            gs1CredentialCheck.resolvedCredential = extendedCredentialResult.resolvedCredential;
-            if (!extendedCredentialResult.verified) {
-                gs1CredentialCheck.errors = gs1CredentialCheck.errors.concat(extendedCredentialResult.errors);
-            }
-        } else {
-            gs1CredentialCheck.errors.push({ code: errorResolveCredentialCode, rule: credentialChainNew.error });
-        }
+    } else {
+        gs1CredentialCheck.errors.push({ code: errorResolveCredentialCode, rule: credentialChain.error });
     }
 
     if (gs1CredentialCheck.errors.length > 0) {
@@ -73,35 +63,59 @@ export async function checkGS1Credentials(externalCredentialLoader: externalCred
     return gs1CredentialCheck;
 }
 
-export async function checkGS1CredentialWithoutPresentation(externalCredentialLoader: externalCredential, externalCredentialVerification: verifyExternalCredential, verifiableCredential: VerifiableCredential) : Promise<gs1RulesResult> {
+// Verify an indiviual GS1 credential to ensure it follows the GS1 level four rules. 
+// Will Resolve any required GS1 Credential to validate the root of trust chain
+// - validatorRequest: Request Objetct with callback fuctions for resolving and verifying credentials
+// - verifiableCredential : Verifiable Credential to be verified
+// - When fullJsonSchemaValidationOn is true will Validate full GS1 JSON Schema
+// - When fullJsonSchemaValidationOn is false will Validate only validate GS1 Custom Rules and Root of Trust credential chain
+export async function checkGS1CredentialWithoutPresentation(validatorRequest: gs1ValidatorRequest, verifiableCredential: VerifiableCredential) : Promise<gs1RulesResult> {
     const verifiablePresentation = { verifiableCredential: verifiableCredential };
-    return await checkGS1Credentials(externalCredentialLoader, externalCredentialVerification, verifiablePresentation, verifiablePresentation.verifiableCredential);
+    return await checkGS1Credentials(validatorRequest, verifiablePresentation, verifiablePresentation.verifiableCredential);
 }
 
-export async function checkGS1CredentialPresentation(externalCredentialLoader: externalCredential, externalCredentialVerification: verifyExternalCredential, verifiablePresentation: VerifiablePresentation) : Promise<gs1RulesResultContainer> {
+// Verify a verifiable credential presentation and ensure all credentials follows the GS1 level four rules.
+// - validatorRequest: Request Objetct with callback fuctions for resolving and verifying credentials
+// - verifiablePresentation: Verifiable Presentation containing the credential to be verified
+// - When fullJsonSchemaValidationOn is true will Validate full GS1 JSON Schema
+// - When fullJsonSchemaValidationOn is false will Validate only validate GS1 Custom Rules and Root of Trust credential chain
+export async function checkGS1CredentialPresentationValidation(validatorRequest: gs1ValidatorRequest, verifiablePresentation: VerifiablePresentation) :  Promise<gs1RulesResultContainer> {
     const gs1CredentialCheck: gs1RulesResultContainer = { verified: true, result: []};
     const presentationCredentials = verifiablePresentation.verifiableCredential;
 
     if (Array.isArray(presentationCredentials)) { 
+        if (!validatorRequest.gs1DocumentResolver || !validatorRequest.gs1DocumentResolver.externalCredentialLoader) {
+            throw new Error("Validation Document Resolver Callback must be provided to validate GS1 Credentials");
+        }
+       
+        const externalCredentialLoader = validatorRequest.gs1DocumentResolver.externalCredentialLoader;
+        const presentationToValidateVC = structuredClone(presentationCredentials);
+
         for (const credential of presentationCredentials) {
-            const credentialResult = await checkGS1Credentials(externalCredentialLoader, externalCredentialVerification, verifiablePresentation, credential);
+            const extendedCredentialValue = credential.credentialSubject.extendsCredential;
+            const extendedCredentialResult = await resolveExternalCredential(externalCredentialLoader, verifiablePresentation, extendedCredentialValue);
+    
+            // Add Resolved Credential to Presentation
+            if (extendedCredentialResult?.credential) { 
+                if (!extendedCredentialResult.inPresentation) {
+                    presentationToValidateVC.unshift(extendedCredentialResult.credential);
+                }
+            }
+        }
+
+        const presentationToValidate = structuredClone(verifiablePresentation);
+        presentationToValidate.verifiableCredential = presentationToValidateVC;
+
+        for (const credential of presentationToValidate.verifiableCredential) {
+            const credentialResult = await checkGS1Credentials(validatorRequest, presentationToValidate, credential);
     
             gs1CredentialCheck.result.push(credentialResult);
             if (!credentialResult.verified) {
                 gs1CredentialCheck.verified = false;
             }
-
-            const resolvedCredential = credentialResult.resolvedCredential;
-            if (resolvedCredential) {
-                gs1CredentialCheck.result.push(resolvedCredential);
-                if (!resolvedCredential.verified) {
-                    gs1CredentialCheck.verified = false;
-                }
-            }
-
           }
     } else {
-        const credentialResult = await checkGS1Credentials(externalCredentialLoader, externalCredentialVerification, verifiablePresentation, presentationCredentials);
+        const credentialResult = await checkGS1Credentials(validatorRequest, verifiablePresentation, presentationCredentials);
     
         gs1CredentialCheck.result.push(credentialResult);
         if (!credentialResult.verified) {

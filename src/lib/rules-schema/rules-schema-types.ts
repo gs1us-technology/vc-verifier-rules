@@ -13,6 +13,7 @@ export type propertyMetaDataTypes = {
 // Properties is a dynamic object based on credential subject schema
 export type CredentialSubjectSchema = {
     type: string;
+    // eslint-disable-next-line
     properties: any;
     required: string[];
     extendsCredentialType?: propertyMetaData;
@@ -25,12 +26,22 @@ export type gs1CredentialSchemaProperty = {
 }
 
 // JSON Schema Type for GS1 Credential Validation Rules
+// Developer Notes: properties in a schema must be a dynamic object
 export type gs1CredentialSchema = {
     "$id": string;
     "$schema": string;
+    credentialType?: string;
     version: string;
     description: string;
+    required?: string[];
     type: string;
-    credentialType:string;
-    properties: gs1CredentialSchemaProperty | undefined;
+    title: string;
+    // eslint-disable-next-line
+    properties: any;
+}
+
+export type gs1CredentialSchemaChain = {
+    title: string;
+    extendsCredentialType?: propertyMetaData;
+    childCredential?: propertyMetaData;
 }

@@ -4,7 +4,7 @@ export const consoleEnabled: boolean = true;
 // https://www.samanthaming.com/tidbits/40-colorful-console-message/
 
 // Output to console as JSON Formatted String
-export const formatOutput = function(output: any) : void {
+export const formatOutput = function(output: object) : void {
     console.log(JSON.stringify(output, null, 4));
  }
 

@@ -1,46 +1,71 @@
-import { checkCredentialAlternativeLicenseValue } from '../lib/rules-definition/subject/check-credential-alternative-license';
-import { checkCredentialLicenseValue, checkPrefixCredentialLicenseValue } from '../lib/rules-definition/subject/check-credential-license';
-import { checkCredentialOrganization } from '../lib/rules-definition/subject/check-credential-organization';
-import { checkCredentialProduct } from '../lib/rules-definition/subject/check-credential-product';
-import { checkCredentialSubjectId } from '../lib/rules-definition/subject/check-credential-subject-Id';
+import { getCredentialRuleSchema } from '../lib/get-credential-type';
+import { checkPrefixCredentialLicenseValue } from '../lib/rules-definition/subject/check-credential-license';
 import { checkCredentialSameAsDigitalLink, checkCredentialSubjectIdDigitalLink, parseGS1DigitalLink } from '../lib/rules-definition/subject/check-credential-subject-Id-digital-link';
-import { checkIdentityKeyTypeValue } from '../lib/rules-definition/subject/check-identification-key-type';
+import { checkSchema } from '../lib/schema/validate-schema';
+import { getDecodedPresentation } from '../lib/utility/jwt-utils';
+import { mock_jsonSchemaLoader } from './mock-data';
+import { mockJoseCredentialPresentationProductJwt } from './mock-jose-credential';
+
+const getMockCredentialFromPresentation = function(presentation: string, indexValue: number) { 
+  const presentationToVerify = getDecodedPresentation(presentation);
+  const mockCredential = presentationToVerify.verifiableCredential[indexValue];
+  return mockCredential;
+};
+
 
 describe('Tests for Rules Engine Subject Field Validation', () => {
 
-  it('should return verified for 3 character license value', async () => {
-        const credentialSubject = { licenseValue: "123" };
-        const result = await checkCredentialLicenseValue(credentialSubject);
-        expect(result.verified).toBe(true);
-        expect(result.rule).toBeUndefined();
+  it('should return verified for 4 character license value', async () => {
+    const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+    mockCompanyPrefixCredential.credentialSubject.licenseValue = "0562";
+    mockCompanyPrefixCredential.credentialSubject.alternativeLicenseValue = "562";
+ 
+    const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+    const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
+    expect(result.verified).toBe(true);
+    expect(result.errors.length).toBe(0);
   })
 
   it('should return verified for 14 character license value', async () => {
-    const credentialSubject = { licenseValue: "12345678901234" };
-    const result = await checkCredentialLicenseValue(credentialSubject);
+ 
+    const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+    mockCompanyPrefixCredential.credentialSubject.licenseValue = "123456789012";
+    mockCompanyPrefixCredential.credentialSubject.alternativeLicenseValue = undefined
+ 
+    const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+    const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
     expect(result.verified).toBe(true);
-    expect(result.rule).toBeUndefined();
+    expect(result.errors.length).toBe(0);
   })
 
   it('should return not verified for undefined license value', async () => {
-      const credentialSubject = { licenseValue: undefined };
-      const result = await checkCredentialLicenseValue(credentialSubject);
+      const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+      mockCompanyPrefixCredential.credentialSubject.licenseValue = undefined;
+   
+      const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+      const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
       expect(result.verified).toBe(false);
-      expect(result.rule).toBeDefined();
+      expect(result.errors.length).toBeGreaterThan(0);
   })
 
   it('should return not verified for null license value', async () => {
-    const credentialSubject = { licenseValue: null };
-    const result = await checkCredentialLicenseValue(credentialSubject);
+    const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+    mockCompanyPrefixCredential.credentialSubject.licenseValue = null;
+ 
+    const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+    const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
     expect(result.verified).toBe(false);
-    expect(result.rule).toBeDefined();
+    expect(result.errors.length).toBeGreaterThan(0);
   }) 
 
   it('should return not verified for non number license value', async () => {
-    const credentialSubject = { licenseValue: "zebra" };
-    const result = await checkCredentialLicenseValue(credentialSubject);
+    const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+    mockCompanyPrefixCredential.credentialSubject.licenseValue = "zebra";
+ 
+    const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+    const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
     expect(result.verified).toBe(false);
-    expect(result.rule).toBeDefined();
+    expect(result.errors.length).toBeGreaterThan(0);
   }) 
 
   it('should return verified for 2 character prefix license value', async () => {
@@ -65,189 +90,228 @@ describe('Tests for Rules Engine Subject Field Validation', () => {
   }) 
 
   it('should return verified for properly alternate license value', async () => {
-    const credentialSubject = { licenseValue: "08600057694", alternativeLicenseValue: "8600057694"};
-    const result = await checkCredentialAlternativeLicenseValue(credentialSubject);
+    const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+    mockCompanyPrefixCredential.credentialSubject.licenseValue = "08600057694";
+    mockCompanyPrefixCredential.credentialSubject.alternativeLicenseValue = "8600057694";
+ 
+    const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+    const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
     expect(result.verified).toBe(true);
-    expect(result.rule).toBeUndefined();
-  }) 
-
-  it('should return verified for properly alternate license value', async () => {
-    const credentialSubject = { licenseValue: "08600057694", alternativeLicenseValue: "8600057694"};
-    const result = await checkCredentialAlternativeLicenseValue(credentialSubject);
-    expect(result.verified).toBe(true);
-    expect(result.rule).toBeUndefined();
+    expect(result.errors.length).toBe(0);
   }) 
 
   it('should return not verified for undefined alternate license value', async () => {
-    const credentialSubject = { licenseValue: "08600057694", alternativeLicenseValue: undefined};
-    const result = await checkCredentialAlternativeLicenseValue(credentialSubject);
+    const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+    mockCompanyPrefixCredential.credentialSubject.licenseValue = "08600057694";
+    mockCompanyPrefixCredential.credentialSubject.alternativeLicenseValue = undefined;
+ 
+    const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+    const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
     expect(result.verified).toBe(false);
-    expect(result.rule).toBeDefined();
+    expect(result.errors.length).toBeGreaterThan(0);
   }) 
  
   it('should return not verified for incorrect alternate license value', async () => {
-    const credentialSubject = { licenseValue: "08600057694", alternativeLicenseValue: "18600057694"};
-    const result = await checkCredentialAlternativeLicenseValue(credentialSubject);
+    const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+    mockCompanyPrefixCredential.credentialSubject.licenseValue = "08600057694";
+    mockCompanyPrefixCredential.credentialSubject.alternativeLicenseValue = "18600057694";
+ 
+    const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+    const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
     expect(result.verified).toBe(false);
-    expect(result.rule).toBeDefined();
+    expect(result.errors.length).toBeGreaterThan(0);
   }) 
 
   it('should return not verified for alternate license value starting with zero', async () => {
-    const credentialSubject = { licenseValue: "08600057694", alternativeLicenseValue: "08600057694"};
-    const result = await checkCredentialAlternativeLicenseValue(credentialSubject);
+    const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+    mockCompanyPrefixCredential.credentialSubject.licenseValue = "08600057694";
+    mockCompanyPrefixCredential.credentialSubject.alternativeLicenseValue = "08600057694";
+ 
+    const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+    const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
     expect(result.verified).toBe(false);
-    expect(result.rule).toBeDefined();
+    expect(result.errors.length).toBeGreaterThan(0);
   }) 
 
   it('should return verified for Organization', async () => {
-      const credentialSubject = { 
-          organization: {
-            "gs1:partyGLN": "0860005769407",
-            "gs1:organizationName": "Healthy Tots"
-          }
+      const organization = { 
+          "gs1:partyGLN": "0860005769407",
+          "gs1:organizationName": "Healthy Tots"
       };
 
-      const result = await checkCredentialOrganization(credentialSubject);
+      const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+      mockCompanyPrefixCredential.credentialSubject.organization = organization
+   
+      const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+      const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
       expect(result.verified).toBe(true);
-      expect(result.rule).toBeUndefined();
+      expect(result.errors.length).toBe(0);
+
     }) 
 
     it('should return not verified for Organization when name is missing', async () => {
-      const credentialSubject = { 
-          organization: {
-            "gs1:partyGLN": "0860005769407",
-            "gs1:organizationName": undefined
-          }
-      };
+      const organization = { 
+        "gs1:partyGLN": "0860005769407",
+        "gs1:organizationName": undefined
+    };
 
-      const result = await checkCredentialOrganization(credentialSubject);
-      expect(result.verified).toBe(false);
-      expect(result.rule).toBeDefined();
-    }) 
+    const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+    mockCompanyPrefixCredential.credentialSubject.organization = organization;
+ 
+    const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+    const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
+    expect(result.verified).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+  }) 
 
     it('should return not verified for Organization when partyGLN is missing', async () => {
-      const credentialSubject = { 
-          organization: {
-            "gs1:partyGLN": undefined,
-            "gs1:organizationName": "Healthy Tots"
-          }
+      const organization = { 
+          "gs1:partyGLN": undefined,
+          "gs1:organizationName": "Healthy Tots"
       };
 
-      const result = await checkCredentialOrganization(credentialSubject);
+      const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+      mockCompanyPrefixCredential.credentialSubject.organization = organization
+  
+      const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader,  mockCompanyPrefixCredential, true);
+      const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
       expect(result.verified).toBe(false);
-      expect(result.rule).toBeDefined();
+      expect(result.errors.length).toBeGreaterThan(0);
     }) 
 
     it('should return not verified for Organization when all fields are missing', async () => {
-      const credentialSubject = { 
-          organization: {
-            "gs1:partyGLN": undefined,
-            "gs1:organizationName": undefined
-          }
-      };
+      const organization = { 
+        "gs1:partyGLN": undefined,
+        "gs1:organizationName": undefined
+    };
 
-      const result = await checkCredentialOrganization(credentialSubject);
-      expect(result.verified).toBe(false);
-      expect(result.rule).toBeDefined();
-    }) 
+    const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+    mockCompanyPrefixCredential.credentialSubject.organization = organization;
+
+    const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+    const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
+    expect(result.verified).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+
+  }) 
 
     it('should return not verified for Organization node is undefined', async () => {
-      const credentialSubject = undefined;
+      const organization = undefined;
 
-      const result = await checkCredentialOrganization(credentialSubject);
-      expect(result.verified).toBe(false);
-      expect(result.rule).toBeDefined();
+    const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+    mockCompanyPrefixCredential.credentialSubject.organization = organization
+
+    const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+    const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
+    expect(result.verified).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
     }) 
 
     it('should return verified for Product', async () => {
-      const credentialSubject = { 
-          product: {
-            "gs1:brand": "Healthy Tots Baby Food",
-            "gs1:productDescription": "Healthy Tots Baby Food"
-          }
-      };
+      const product = {
+        "gs1:brand": { "gs1:brandName": "Healthy Tots Baby Food" },
+        "gs1:productDescription": "Healthy Tots Baby Food"
+      }
 
-      const result = await checkCredentialProduct(credentialSubject);
+      const mockProductDataCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 2);
+      mockProductDataCredential.credentialSubject.product = product;
+
+      const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockProductDataCredential, true);
+      const result = await checkSchema(credentialSchema, mockProductDataCredential);
       expect(result.verified).toBe(true);
-      expect(result.rule).toBeUndefined();
+      expect(result.errors.length).toBe(0);
     }) 
 
-
     it('should return not verified for Product when brand is missing', async () => {
-      const credentialSubject = { 
-        product: {
-          "gs1:brand": undefined,
-          "gs1:productDescription": "Healthy Tots Baby Food"
-        }
-    };
+      const product = {
+        "gs1:brand": undefined,
+        "gs1:productDescription": "Healthy Tots Baby Food"
+      }
 
-      const result = await checkCredentialProduct(credentialSubject);
+      const mockProductDataCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 2);
+      mockProductDataCredential.credentialSubject.product = product;
+
+      const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockProductDataCredential, true);
+      const result = await checkSchema(credentialSchema, mockProductDataCredential);
+
       expect(result.verified).toBe(false);
-      expect(result.rule).toBeDefined();
+      expect(result.errors.length).toBeGreaterThan(0);
     }) 
 
     it('should return not verified for Product when description is missing', async () => {
-      const credentialSubject = { 
-        product: {
-          "gs1:brand": "Healthy Tots Baby Food",
-          "gs1:productDescription": undefined
-        }
-    };
+      const product = {
+        "gs1:brand": { "gs1:brandName": "Healthy Tots Baby Food" },
+        "gs1:productDescription": undefined
+      }
 
-      const result = await checkCredentialProduct(credentialSubject);
+      const mockProductDataCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 2);
+      mockProductDataCredential.credentialSubject.product = product;
+
+      const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockProductDataCredential, true);
+      const result = await checkSchema(credentialSchema, mockProductDataCredential);
       expect(result.verified).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
     }) 
 
     it('should return not verified for Product when all fields are missing', async () => {
-      const credentialSubject = { 
-        product: {
-          "gs1:brand": undefined,
-          "gs1:productDescription": undefined
-        }
-    };
+      const product = {
+        "gs1:brand": undefined,
+        "gs1:productDescription": undefined
+      }
 
-      const result = await checkCredentialProduct(credentialSubject);
+      const mockProductDataCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 2);
+      mockProductDataCredential.credentialSubject.product = product;
+
+      const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockProductDataCredential, true);
+      const result = await checkSchema(credentialSchema, mockProductDataCredential);
       expect(result.verified).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
     }) 
 
     it('should return not verified for Product node is undefined', async () => {
-      const credentialSubject = undefined;
+      const mockProductDataCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 2);
+      mockProductDataCredential.credentialSubject.product = undefined;
 
-      const result = await checkCredentialProduct(credentialSubject);
+      const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockProductDataCredential, true);
+      const result = await checkSchema(credentialSchema, mockProductDataCredential);
       expect(result.verified).toBe(false);
-      expect(result.rule).toBeDefined();
+      expect(result.errors.length).toBeGreaterThan(0);
     }) 
 
     it('should return verified for Subject Id', async () => {
-      const credentialSubject = { id: "did:web:www.healthytots.com" };
+      const credentialSubjectId = "did:web:www.healthytots.com";
 
-      const result = await checkCredentialSubjectId(credentialSubject);
+      const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+      mockCompanyPrefixCredential.credentialSubject.id = credentialSubjectId;
+   
+      const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+      const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
       expect(result.verified).toBe(true);
-      expect(result.rule).toBeUndefined();
+      expect(result.errors.length).toBe(0);
     }) 
 
     it('should return not verified for non URI Subject Id', async () => {
-      const credentialSubject = { id: "healthytots" };
+      const credentialSubjectId = "healthytots";
 
-      const result = await checkCredentialSubjectId(credentialSubject);
+      const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+      mockCompanyPrefixCredential.credentialSubject.id = credentialSubjectId;
+   
+      const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential, true);
+      const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
       expect(result.verified).toBe(false);
-      expect(result.rule).toBeDefined();
-    }) 
-
-    it('should return not verified for undefined Subject Id', async () => {
-      const credentialSubject = { id: undefined };
-
-      const result = await checkCredentialSubjectId(credentialSubject);
-      expect(result.verified).toBe(false);
-      expect(result.rule).toBeDefined();
+      expect(result.errors.length).toBeGreaterThan(0);
     }) 
 
     it('should return not verified for missing Subject Id', async () => {
-      const credentialSubject = undefined;
+      const credentialSubjectId = undefined;
 
-      const result = await checkCredentialSubjectId(credentialSubject);
+      const mockCompanyPrefixCredential = getMockCredentialFromPresentation(mockJoseCredentialPresentationProductJwt, 0);
+      mockCompanyPrefixCredential.credentialSubject.id = credentialSubjectId;
+   
+      const credentialSchema = getCredentialRuleSchema(mock_jsonSchemaLoader, mockCompanyPrefixCredential);
+      const result = await checkSchema(credentialSchema, mockCompanyPrefixCredential);
       expect(result.verified).toBe(false);
-      expect(result.rule).toBeDefined();
+      expect(result.errors.length).toBeGreaterThan(0);
     }) 
 
     it('should return verified for Subject Id is DigitalLink', async () => {
@@ -354,30 +418,6 @@ describe('Tests for Rules Engine Subject Field Validation', () => {
       expect(result.type).toBe("Unknown");
     }) 
 
-
-    it('should return verified for (GTIN) Identification Key Type', async () => {
-      const credentialSubject = { identificationKeyType: "GTIN" };
-
-      const result = await checkIdentityKeyTypeValue(credentialSubject);
-      expect(result.verified).toBe(true);
-      expect(result.rule).toBeUndefined();
-    })
-
-    it('should return verified for (GLN) Identification Key Type', async () => {
-      const credentialSubject = { identificationKeyType: "GLN" };
-
-      const result = await checkIdentityKeyTypeValue(credentialSubject);
-      expect(result.verified).toBe(true);
-      expect(result.rule).toBeUndefined();
-    })
-
-    it('should return not verified for (Unknown) Identification Key Type', async () => {
-      const credentialSubject = { identificationKeyType: "Unknown" };
-
-      const result = await checkIdentityKeyTypeValue(credentialSubject);
-      expect(result.verified).toBe(false);
-      expect(result.rule).toBeDefined();
-    })
 
   })
 

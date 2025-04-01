@@ -1,4 +1,4 @@
-import { gs1CredentialSchema } from "./rules-schema-types";
+import { gs1CredentialSchema } from "./rules-schema-types.js";
 
 // JSON Schema for Generic Credential Validation Rules
 export const genericCredentialSchema: gs1CredentialSchema = {
@@ -7,6 +7,6 @@ export const genericCredentialSchema: gs1CredentialSchema = {
     "version": "1.0.0",
     "description": "Generic Credential",
     "type": "object",
-    "credentialType": "genericCredentialSchema",
+    "title": "genericCredentialSchema",
     "properties": undefined
 }

@@ -1,6 +1,6 @@
 import { invalidExtendedCredentialMissing, invalidIssuer, invalidLicenseValueFormat } from "../../engine/gs1-credential-errors.js";
 import { credentialChainMetaData } from "../../engine/validate-extended-credential";
-import { gs1RulesResult } from "../../gs1-rules-types";
+import { gs1RulesResult } from "../../types.js";
 import { parseGS1DigitalLink } from "../subject/check-credential-subject-Id-digital-link.js";
 import { gs1CompanyPrefixCredentialType } from "../types/gs1-company-prefix-type";
 import { gs1KeyCredentialType } from "../types/gs1-key-type";
@@ -15,7 +15,7 @@ export async function validateExtendedCompanyPrefixCredential(credentialType: st
     const credentialSubject = credential.credentialSubject as gs1KeyCredentialType;
     const extendedCredential = credentialChain.extendedCredentialChain?.credential;
 
-    if (!!!extendedCredential) {
+    if (!extendedCredential) {
         gs1CredentialCheck.verified = false;
         gs1CredentialCheck.errors.push(invalidExtendedCredentialMissing);
         return gs1CredentialCheck;
@@ -39,7 +39,7 @@ export async function validateExtendedCompanyPrefixCredential(credentialType: st
     const keyValue = parseGS1DigitalLink(credentialSubject.id);
     const companyPrefixLicenseValue = extendedCredentialSubject.licenseValue;
 
-    if (!!!keyValue.parsedValue || !compareLicenseValue(keyValue.parsedValue,companyPrefixLicenseValue)) {
+    if (!keyValue.parsedValue || !compareLicenseValue(keyValue.parsedValue,companyPrefixLicenseValue)) {
         gs1CredentialCheck.verified = false;
         gs1CredentialCheck.errors.push(invalidLicenseValueFormat);
     }

@@ -1,17 +1,16 @@
-import { externalCredential, gs1RulesResult, verifyExternalCredential } from "../gs1-rules-types.js";
 import { rulesEngineManager } from "../rules-definition/rules-manager.js";
-import { getCredentialRuleSchema, getCredentialType } from "../get-credential-type.js";
-import { CredentialSubjectSchema, gs1CredentialSchema, propertyMetaData } from "../rules-schema/rules-schema-types.js";
+import { getCredentialRuleSchemaChain, getCredentialType, GS1_PREFIX_LICENSE_CREDENTIAL } from "../get-credential-type.js";
+import { CredentialSubjectSchema, gs1CredentialSchemaChain, propertyMetaData } from "../rules-schema/rules-schema-types.js";
 import { invalidGS1CredentialTypes, invalidRootCredentialType, unsupportedCredentialChain } from "./gs1-credential-errors.js";
 import { resolveExternalCredential } from "./resolve-external-credential.js";
 import { formateConsoleLog } from "../utility/console-logger.js";
-import { CredentialPresentation, VerifiableCredential, VerifiablePresentation } from "../types.js";
+import { CredentialPresentation, VerifiableCredential, externalCredential, gs1RulesResult, verifyExternalCredential } from "../types.js";
 
 // Metadata for the Credential Chain
 export type credentialChainMetaData = {
     credential: VerifiableCredential;
     inPresentation: boolean;
-    schema: gs1CredentialSchema;
+    schema: gs1CredentialSchemaChain;
     credentialSubjectSchema: CredentialSubjectSchema | unknown;
     extendedCredentialChain?: credentialChainMetaData;
     error?: string;
@@ -24,10 +23,10 @@ const LOG_CREDENTIAL_CHAIN = false;
 export async function buildCredentialChain(externalCredentialLoader: externalCredential, verifiablePresentation: CredentialPresentation, credential: VerifiableCredential) : Promise<credentialChainMetaData> {
 
     const credentialSubject = credential?.credentialSubject;
-    const credentialSchema = getCredentialRuleSchema(credential);
+    const credentialSchema = getCredentialRuleSchemaChain(credential);
 
     // inPresentation defaults to true to short circuit the credential chain lookup flow
-    const credentialSubjectSchemaRule = credentialSchema.properties?.credentialSubject;
+    const credentialSubjectSchemaRule = credentialSchema;
     const credentialChain: credentialChainMetaData = {
         credential, 
         inPresentation: true,
@@ -72,10 +71,10 @@ export async function buildCredentialChain(externalCredentialLoader: externalCre
 export async function validateCredentialChain(externalCredentialVerification: verifyExternalCredential, credentialChain: credentialChainMetaData, validateChain: boolean) : Promise<gs1RulesResult> {
 
     const credential: VerifiableCredential = credentialChain.credential
-    const credentialSchema: gs1CredentialSchema = credentialChain.schema;
-    const credentialSchemaSubject: CredentialSubjectSchema | undefined = credentialSchema.properties?.credentialSubject;
-    const extendedCredential: any = credentialChain.extendedCredentialChain?.credential;
-    const gs1CredentialCheck: gs1RulesResult = { credentialId: credential.id, credentialName: credentialSchema.credentialType, verified: true, errors: []};
+    const credentialSchema: gs1CredentialSchemaChain = credentialChain.schema;
+    const credentialSchemaSubject: propertyMetaData | undefined = credentialSchema.extendsCredentialType;
+    const extendedCredential: VerifiableCredential | undefined = credentialChain.extendedCredentialChain?.credential;
+    const gs1CredentialCheck: gs1RulesResult = { credentialId: credential.id, credentialName: credentialSchema.title, verified: true, errors: []};
 
     if (!credentialChain.inPresentation) {
         const checkCredentialResult = await externalCredentialVerification(credentialChain.credential);
@@ -86,40 +85,40 @@ export async function validateCredentialChain(externalCredentialVerification: ve
     }
 
     // When there is no extended credential exit out of the chain
-    if (!!!extendedCredential) {
+    if (!extendedCredential) {
         return gs1CredentialCheck;
     }
 
-    const extendedCredentialSchema = getCredentialRuleSchema(extendedCredential);
-    const extendedCredentialType = extendedCredentialSchema.credentialType;
+    // TODD: Clean Up Code
+    const extendedCredentialSchema = getCredentialRuleSchemaChain(extendedCredential);
+    const extendedCredentialType = extendedCredentialSchema.title;
 
     // Check if Parent is Supported Type
-    const parentInvalid = credentialSchemaSubject?.extendsCredentialType?.type.includes(extendedCredentialType)
-    if (!!!parentInvalid) {
+    const parentInvalid = credentialSchemaSubject?.type.includes(extendedCredentialType)
+    if (!parentInvalid) {
         gs1CredentialCheck.errors.push(invalidGS1CredentialTypes);
     }
 
     // Check if Child is Supported Type
-    const extendedCredentialSubjectSchema = extendedCredentialSchema.properties?.credentialSubject;
-    const credentialType = getCredentialType(credential.type)
+    const credentialType = getCredentialType(credential.type as string[])
 
-    const childIsValid = extendedCredentialSubjectSchema?.childCredential?.type.includes(credentialType)
+    const childIsValid = extendedCredentialSchema?.childCredential?.type.includes(credentialType.name)
     if (!childIsValid) {
         gs1CredentialCheck.errors.push(invalidGS1CredentialTypes);
     }
 
     // Get Specific Extended Credential Type Rule to call to validate extended credential chain 
     // Library currently only supports one extended credential type rule check
-    const extendedCredentialType_rule =  credentialSchemaSubject?.extendsCredentialType?.rule;
+    const extendedCredentialType_rule =  credentialSchemaSubject?.rule;
 
-    if (!!!extendedCredentialType_rule || typeof rulesEngineManager[extendedCredentialType_rule] === "undefined") {
+    if (!extendedCredentialType_rule || typeof rulesEngineManager[extendedCredentialType_rule] === "undefined") {
         gs1CredentialCheck.verified = false;
         gs1CredentialCheck.errors.push(unsupportedCredentialChain);
         return gs1CredentialCheck;
     }
 
     if (LOG_CREDENTIAL_CHAIN) {
-        formateConsoleLog(credentialSchema.credentialType);
+        formateConsoleLog(credentialSchema.title);
     }
 
     if (validateChain) {
@@ -142,7 +141,7 @@ export async function validateCredentialChain(externalCredentialVerification: ve
             const resolvedCredentialMetaData = credentialChain.extendedCredentialChain?.extendedCredentialChain;
             gs1CredentialCheck.resolvedCredential =  { 
                 credentialId: resolvedCredentialMetaData?.credential?.id, 
-                credentialName: resolvedCredentialMetaData?.schema?.credentialType, 
+                credentialName: resolvedCredentialMetaData?.schema?.title, 
                 verified: validateExtendedCredentialResult.verified, 
                 errors: validateExtendedCredentialResult.errors
             };
@@ -155,11 +154,11 @@ export async function validateCredentialChain(externalCredentialVerification: ve
     } else {
 
         if (LOG_CREDENTIAL_CHAIN) {
-            formateConsoleLog(credentialSchema.credentialType);
+            formateConsoleLog(credentialSchema.title);
         }
 
         // Make sure the root is always a GS1 License Prefix Credential
-        if (extendedCredentialType !== "GS1PrefixLicenseCredential") {
+        if (extendedCredentialType !== GS1_PREFIX_LICENSE_CREDENTIAL) {
             gs1CredentialCheck.errors.push(invalidRootCredentialType);
         }
 
@@ -171,10 +170,10 @@ export async function validateCredentialChain(externalCredentialVerification: ve
                 const resolvedCredentialMetaData = credentialChain.extendedCredentialChain;
                 gs1CredentialCheck.resolvedCredential =  { 
                     credentialId: resolvedCredentialMetaData?.credential?.id, 
-                    credentialName: resolvedCredentialMetaData?.schema?.credentialType, 
+                    credentialName: resolvedCredentialMetaData?.schema?.title, 
                     verified: validateExtendedCredentialResult.verified, 
                     errors: validateExtendedCredentialResult.errors
-                };;
+                };
             }
 
             // Add Errors to Result - will be bubbled up the chain to the child credential result

@@ -1,5 +1,5 @@
 import { invalidIssueSubject } from "../../engine/gs1-credential-errors.js";
-import { gs1CredentialValidationRuleResult, subjectId } from "../../gs1-rules-types.js";
+import { gs1CredentialValidationRuleResult } from "../../gs1-rules-types.js";
 import { CredentialSubject, VerifiableCredential } from "../../types.js";
 
 export type credentialChainIssuers = {
@@ -13,7 +13,7 @@ export type credentialChainIssuers = {
 export function getCredentialIssuer(credential: VerifiableCredential) : string {
 
     // When credential is not defined return empty string for issuer
-    if (!!!credential) {
+    if (!credential) {
         return "";
     }
 
@@ -34,16 +34,28 @@ export async function checkIssuerToSubjectId(credential: VerifiableCredential, e
     return {verified: true};
 }
 
+
+export function checkIssuerToSubjectId_schema(credential: VerifiableCredential, extendedCredentialSubject: CredentialSubject | undefined): gs1CredentialValidationRuleResult {
+
+    // Compare Issuer and Subject ID
+    const credentialIssuer = getCredentialIssuer(credential);
+    if (credentialIssuer !== extendedCredentialSubject?.id) {
+        return {verified: false, rule: invalidIssueSubject};
+    }  
+
+    return {verified: true};
+}
+
 // Check the Issuers of the credentials in the chain to ensure they are valid
 // Compare Issuers of Organization Data Credential and it's chain.
 // The Organization Data Credential Issuer must match the Key Credential Issuer or the Company Prefix Credential Subject Id
 export function checkCredentialChainIssuers(credentialToCheck: credentialChainIssuers) : boolean {
 
-    if (!!!credentialToCheck) {
+    if (!credentialToCheck) {
         throw new Error("Credential Chain Issuers are not defined.");
     }
 
-    if (!!!credentialToCheck.dataCredential || !!!credentialToCheck.keyCredential || !!!credentialToCheck.companyPrefix) {
+    if (!credentialToCheck.dataCredential || !credentialToCheck.keyCredential || !credentialToCheck.companyPrefix) {
         return false;
     }
 
@@ -52,7 +64,7 @@ export function checkCredentialChainIssuers(credentialToCheck: credentialChainIs
     const companyPrefixCredentialIssuer = getCredentialIssuer(credentialToCheck.companyPrefix);
     const companyPrefixSubjectID = credentialToCheck.companyPrefix.credentialSubject.id;
 
-    if (!!!organizationCredentialIssuer || !!!keyCredentialIssuer || !!!companyPrefixCredentialIssuer || !!!companyPrefixSubjectID) {
+    if (!organizationCredentialIssuer || !keyCredentialIssuer || !companyPrefixCredentialIssuer || !companyPrefixSubjectID) {
         return false;
     }
     
